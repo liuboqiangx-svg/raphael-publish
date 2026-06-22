@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raphael Publish 项目逻辑地图</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 100%);
+            padding: 16px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        header h1 { font-size: 1.4rem; font-weight: 700; }
+        header p { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
+        .legend {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+        }
+        .legend-dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+        }
+        .header-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 10px;
+        }
+        .playback-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .playback-controls select {
+            background: #1e293b;
+            color: #e2e8f0;
+            border: 1px solid #475569;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+        .playback-controls button {
+            background: #4f46e5;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: opacity 0.2s, background 0.2s;
+        }
+        .playback-controls button:hover {
+            background: #6366f1;
+        }
+        .playback-controls button:disabled {
+            cursor: not-allowed;
+        }
+        .playback-controls #btn-pause {
+            background: #475569;
+        }
+        .playback-controls #btn-reset {
+            background: #334155;
+        }
+        .path-guide {
+            background: #1e293b;
+            border-bottom: 1px solid #334155;
+            padding: 12px 24px;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .path-card {
+            flex: 1;
+            min-width: 320px;
+            background: #0f172a;
+            border-radius: 8px;
+            padding: 12px 16px;
+            border-left: 3px solid;
+            cursor: pointer;
+            transition: box-shadow 0.2s, background 0.2s;
+        }
+        .path-card:hover {
+            background: #162032;
+        }
+        .path-card.build { border-color: #60a5fa; }
+        .path-card.run { border-color: #34d399; }
+        .path-card.build.active {
+            box-shadow: 0 0 0 2px #60a5fa, 0 0 20px rgba(96, 165, 250, 0.25);
+            background: #162032;
+        }
+        .path-card.run.active {
+            box-shadow: 0 0 0 2px #34d399, 0 0 20px rgba(52, 211, 153, 0.25);
+            background: #162032;
+        }
+        .path-card h3 {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+            opacity: 0.8;
+        }
+        .path-card.build h3 { color: #60a5fa; }
+        .path-card.run h3 { color: #34d399; }
+        .path-card p {
+            font-size: 0.85rem;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+        .main {
+            display: flex;
+            height: calc(100vh - 170px);
+        }
+        #chart {
+            flex: 1;
+            min-width: 0;
+        }
+        #detailPanel {
+            width: 420px;
+            background: #1e293b;
+            border-left: 1px solid #334155;
+            padding: 24px;
+            overflow-y: auto;
+        }
+        .empty-state {
+            color: #94a3b8;
+            text-align: center;
+            padding: 60px 20px;
+        }
+        .node-detail h2 {
+            font-size: 1.4rem;
+            color: #fff;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #475569;
+            word-break: break-all;
+        }
+        .detail-section {
+            margin-bottom: 20px;
+        }
+        .detail-section h3 {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #94a3b8;
+            margin-bottom: 8px;
+        }
+        .detail-section p, .detail-section ul {
+            font-size: 0.95rem;
+            color: #cbd5e1;
+            line-height: 1.7;
+        }
+        .detail-section ul {
+            padding-left: 18px;
+        }
+        .detail-section li { margin-bottom: 4px; }
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .connections {
+            background: #0f172a;
+            border-radius: 8px;
+            padding: 14px;
+            margin-top: 10px;
+        }
+        .conn-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+            color: #cbd5e1;
+        }
+        .conn-row:last-child { margin-bottom: 0; }
+        .conn-arrow { color: #64748b; }
+        .conn-build { color: #60a5fa; }
+        .conn-run { color: #34d399; }
+        .conn-dep { color: #94a3b8; }
+        .hint {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.85);
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+        }
+        @media (max-width: 900px) {
+            .main { flex-direction: column; }
+            #detailPanel { width: 100%; height: 40%; border-left: none; border-top: 1px solid #334155; }
+            #chart { height: 60%; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>Raphael Publish 项目逻辑地图</h1>
+            <p>每个文件是一个节点，节点下方标注它的核心逻辑，连线表示触发/依赖关系</p>
+        </div>
+        <div class="header-controls">
+            <div class="playback-controls">
+                <select id="path-select">
+                    <option value="build">构建路径</option>
+                    <option value="run">运行路径</option>
+                </select>
+                <button id="btn-play">▶ 播放</button>
+                <button id="btn-pause">⏸ 暂停</button>
+                <button id="btn-reset">↺ 重置</button>
+            </div>
+            <div class="legend">
+                <div class="legend-item"><div class="legend-dot" style="background:#60a5fa"></div>构建流程</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#34d399"></div>运行流程</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#94a3b8"></div>依赖引入</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="path-guide">
+        <div class="path-card build" id="path-card-build">
+            <h3>构建主路径（起点 → 终点）</h3>
+            <p><strong>pnpm build</strong> → package.json 读取脚本 → tsc 类型检查 + vite 打包 → 从 index.html 进入，解析 main.tsx → App.tsx → 所有组件和 lib → 最终输出 <strong>dist/</strong></p>
+        </div>
+        <div class="path-card run" id="path-card-run">
+            <h3>运行主路径（起点 → 终点）</h3>
+            <p><strong>浏览器</strong> 请求 index.html → 加载 main.tsx → 挂载 App.tsx → 初始化状态并渲染组件 → 调用 lib 把 Markdown 转成主题化 HTML → PreviewPanel 呈现 → <strong>用户看到页面并交互</strong></p>
+        </div>
+    </div>
+
+    <div class="main">
+        <div id="chart"></div>
+        <div id="detailPanel">
+            <div class="empty-state">
+                点击地图中的任意节点，查看它的详细说明、触发逻辑和连接关系
+            </div>
+        </div>
+    </div>
+    <div class="hint">提示：可拖拽节点调整位置，滚动鼠标缩放地图</div>
+
+    <script>
+        // ================= 分类颜色 =================
+        const categories = [
+            { name: '命令/入口', itemStyle: { color: '#f472b6' }, label: { color: '#f472b6' } },   // 0
+            { name: '配置', itemStyle: { color: '#60a5fa' }, label: { color: '#60a5fa' } },        // 1
+            { name: '核心入口', itemStyle: { color: '#f87171' }, label: { color: '#f87171' } },    // 2
+            { name: '核心应用', itemStyle: { color: '#fb923c' }, label: { color: '#fb923c' } },    // 3
+            { name: '组件', itemStyle: { color: '#a78bfa' }, label: { color: '#a78bfa' } },        // 4
+            { name: '工具库', itemStyle: { color: '#2dd4bf' }, label: { color: '#2dd4bf' } },      // 5
+            { name: '资源/测试', itemStyle: { color: '#94a3b8' }, label: { color: '#94a3b8' } },   // 6
+            { name: '用户/输出', itemStyle: { color: '#fbbf24' }, label: { color: '#fbbf24' } }     // 7
+        ];
+
+        // ================= 节点数据 =================
+        const nodes = [
+            // 命令/入口
+            { id: 'pnpm build', name: 'pnpm build', category: 0, x: 80, y: 60, symbolSize: 45, symbol: 'diamond', itemStyle: { borderWidth: 3, borderColor: '#f472b6', shadowBlur: 15, shadowColor: '#f472b6' },
+              shortLogic: '人类指令',
+              logic: '你在终端输入的构建命令。pnpm 会读取 package.json 并执行 build 脚本。' },
+            { id: 'pnpm dev', name: 'pnpm dev', category: 0, x: 220, y: 60, symbolSize: 30,
+              shortLogic: '开发指令',
+              logic: '本地开发命令。Vite 会启动开发服务器，实时监听文件变化并热更新。' },
+            { id: '浏览器', name: '浏览器', category: 0, x: 980, y: 60, symbolSize: 45, symbol: 'diamond', itemStyle: { borderWidth: 3, borderColor: '#f472b6', shadowBlur: 15, shadowColor: '#f472b6' },
+              shortLogic: '用户入口',
+              logic: '用户打开网页的地方。浏览器请求服务器返回 index.html，然后加载 JS 文件。' },
+
+            // 配置层
+            { id: 'package.json', name: 'package.json', category: 1, x: 150, y: 170, symbolSize: 30,
+              shortLogic: '脚本/依赖清单',
+              logic: '项目身份证。scripts 定义命令菜单，dependencies/devDependencies 列出所有第三方库。任何命令启动时首先被读取。' },
+            { id: 'tsconfig.json', name: 'tsconfig.json', category: 1, x: 50, y: 290, symbolSize: 25,
+              shortLogic: 'TS 规则',
+              logic: 'TypeScript 语法规则手册。规定代码支持 ES2020、使用 bundler 模块解析、开启严格类型检查等。' },
+            { id: 'vite.config.ts', name: 'vite.config.ts', category: 1, x: 150, y: 290, symbolSize: 25,
+              shortLogic: 'Vite 配置',
+              logic: '配置 Vite 构建工具：加载 React 插件、设置基础路径 base: "/"。' },
+            { id: 'tailwind.config.js', name: 'tailwind.config.js', category: 1, x: 250, y: 290, symbolSize: 25,
+              shortLogic: '样式系统',
+              logic: '配置 Tailwind CSS 的设计系统，定义可用颜色、间距、字体等。' },
+            { id: 'playwright.config.ts', name: 'playwright.config.ts', category: 1, x: 50, y: 410, symbolSize: 20,
+              shortLogic: 'E2E 配置',
+              logic: '端到端测试工具 Playwright 的配置文件，决定测试地址和浏览器。' },
+            { id: 'vitest.config.ts', name: 'vitest.config.ts', category: 1, x: 50, y: 510, symbolSize: 20,
+              shortLogic: '单元测试配置',
+              logic: '单元测试工具 Vitest 的配置文件，决定测试环境和模块解析。' },
+
+            // 核心入口
+            { id: 'index.html', name: 'index.html', category: 2, x: 420, y: 170, symbolSize: 30,
+              shortLogic: '空盘子',
+              logic: '浏览器看到的第一个页面。只提供一个 \u003cdiv id="root"\u003e 挂载容器，并引用 src/main.tsx。' },
+            { id: 'src/main.tsx', name: 'src/main.tsx', category: 2, x: 420, y: 290, symbolSize: 30,
+              shortLogic: '开火按钮',
+              logic: '应用启动入口。createRoot 找到 root 容器，把 App 组件渲染进去。' },
+
+            // 核心应用
+            { id: 'src/App.tsx', name: 'src/App.tsx', category: 3, x: 420, y: 420, symbolSize: 35,
+              shortLogic: '主厨/总指挥',
+              logic: '整个应用的大脑。管理主题、Markdown 内容、设备类型、滚动同步等状态，组织所有子组件，处理点击定位和导出逻辑。' },
+            { id: 'src/index.css', name: 'src/index.css', category: 3, x: 550, y: 290, symbolSize: 20,
+              shortLogic: '全局装修',
+              logic: '全局 CSS 样式，包含暗色模式变量、设备框架动画、滚动条样式等。' },
+            { id: 'src/defaultContent.ts', name: 'src/defaultContent.ts', category: 3, x: 550, y: 420, symbolSize: 20,
+              shortLogic: '示例菜',
+              logic: '编辑器默认显示的示例 Markdown 内容，用户第一次打开时看到。' },
+
+            // 组件层
+            { id: 'Header', name: 'Header.tsx', category: 4, x: 200, y: 540, symbolSize: 20,
+              shortLogic: '顶部招牌',
+              logic: '顶部标题栏，包含项目名称、GitHub 链接、暗色/亮色模式切换按钮。' },
+            { id: 'ThemeSelector', name: 'ThemeSelector.tsx', category: 4, x: 320, y: 540, symbolSize: 25,
+              shortLogic: '主题抽屉',
+              logic: '左上方主题选择下拉面板，点击展开/折叠，选择主题后应用新样式。' },
+            { id: 'Toolbar', name: 'Toolbar.tsx', category: 4, x: 440, y: 540, symbolSize: 25,
+              shortLogic: '操作按钮组',
+              logic: '顶部工具栏：设备切换、滚动同步开关、导出 PDF/HTML、复制到公众号。' },
+            { id: 'EditorPanel', name: 'EditorPanel.tsx', category: 4, x: 560, y: 540, symbolSize: 30,
+              shortLogic: '切菜板/编辑器',
+              logic: '左侧 Markdown 编辑器（textarea）。用户输入文字时更新 App 状态，并处理粘贴转换。' },
+            { id: 'PreviewPanel', name: 'PreviewPanel.tsx', category: 4, x: 720, y: 540, symbolSize: 30,
+              shortLogic: '成品展示盘',
+              logic: '右侧预览区，显示渲染后的微信排版效果。点击元素可定位到编辑器对应位置。' },
+            { id: 'DeviceFrame', name: 'DeviceFrame.tsx', category: 4, x: 840, y: 540, symbolSize: 20,
+              shortLogic: '设备模型',
+              logic: '根据预览设备状态（手机/平板/PC）给预览区套上不同边框。' },
+
+            // 工具库
+            { id: 'src/lib/markdown.ts', name: 'markdown.ts', category: 5, x: 650, y: 660, symbolSize: 30,
+              shortLogic: 'Markdown 切菜机',
+              logic: '使用 markdown-it 把 Markdown 文本解析成 HTML，并应用主题样式。' },
+            { id: 'src/lib/markdownIndexer.ts', name: 'markdownIndexer.ts', category: 5, x: 780, y: 660, symbolSize: 25,
+              shortLogic: '编号贴标机',
+              logic: '给渲染后的 HTML 元素添加 data-md-type 和 data-md-index 属性，用于点击定位。' },
+            { id: 'src/lib/indexerRules.ts', name: 'indexerRules.ts', category: 5, x: 900, y: 660, symbolSize: 20,
+              shortLogic: '编号规则',
+              logic: '定义哪些 HTML 元素需要编号（标题、段落、列表、代码块、图片等）。' },
+            { id: 'src/lib/markdownLocator.ts', name: 'markdownLocator.ts', category: 5, x: 650, y: 780, symbolSize: 25,
+              shortLogic: '反向定位仪',
+              logic: '根据元素编号在原始 Markdown 文本中找到对应的起始/结束位置。' },
+            { id: 'src/lib/imageSelector.ts', name: 'imageSelector.ts', category: 5, x: 780, y: 780, symbolSize: 25,
+              shortLogic: '图片定位器',
+              logic: '专门处理点击图片时的定位，根据 src/alt 匹配 Markdown 并高亮编辑器区域。' },
+            { id: 'src/lib/htmlToMarkdown.ts', name: 'htmlToMarkdown.ts', category: 5, x: 520, y: 660, symbolSize: 25,
+              shortLogic: '万能转换器',
+              logic: '把从网页/Word/Notion/飞书复制的富文本 HTML 自动转换成 Markdown（魔法粘贴）。' },
+            { id: 'src/lib/wechatCompat.ts', name: 'wechatCompat.ts', category: 5, x: 520, y: 780, symbolSize: 25,
+              shortLogic: '微信口味调节师',
+              logic: '让生成的 HTML 在微信公众号后台正确显示：处理表格、图片 Base64、去掉内部标记。' },
+            { id: 'src/lib/themes/index.ts', name: 'themes/index.ts', category: 5, x: 900, y: 780, symbolSize: 20,
+              shortLogic: '30 套菜单',
+              logic: '汇总所有主题文件，为 App 提供可选主题列表和主题元数据。' },
+
+            // 资源/测试
+            { id: 'public/', name: 'public/', category: 6, x: 560, y: 170, symbolSize: 20,
+              shortLogic: '静态装饰',
+              logic: '构建时原样复制到 dist/ 的静态文件，如 CNAME 自定义域名配置。' },
+            { id: 'media/', name: 'media/', category: 6, x: 1100, y: 170, symbolSize: 20,
+              shortLogic: '菜单照片',
+              logic: '项目截图、演示 GIF/MP4，用于 README 和文档展示。' },
+            { id: 'e2e/app.spec.ts', name: 'e2e/app.spec.ts', category: 6, x: 1100, y: 60, symbolSize: 20,
+              shortLogic: '试吃员',
+              logic: 'Playwright 端到端测试脚本，模拟真实浏览器自动验证核心功能。' },
+            { id: '.git/', name: '.git/', category: 6, x: 1220, y: 60, symbolSize: 20,
+              shortLogic: '记忆相册',
+              logic: 'Git 版本控制数据库，记录代码每次修改历史。' },
+            { id: '.github/workflows/', name: '.github/workflows/', category: 6, x: 1220, y: 170, symbolSize: 20,
+              shortLogic: '自动上菜机器人',
+              logic: 'GitHub Actions 工作流，推送代码后自动跑测试、构建、部署。' },
+            { id: '.cursor/', name: '.cursor/', category: 6, x: 1340, y: 60, symbolSize: 20,
+              shortLogic: '编辑器便签',
+              logic: 'Cursor 编辑器的项目配置，不影响项目构建和运行。' },
+
+            // 用户/输出
+            { id: 'dist/', name: 'dist/', category: 7, x: 150, y: 750, symbolSize: 45, symbol: 'roundRect', itemStyle: { borderWidth: 3, borderColor: '#fbbf24', shadowBlur: 15, shadowColor: '#fbbf24' },
+              shortLogic: '最终菜品',
+              logic: '构建产物目录。包含打包后的 index.html、JS、CSS 和 public/ 复制的文件，可直接部署。' },
+            { id: '用户输入', name: '用户输入', category: 7, x: 1100, y: 540, symbolSize: 25,
+              shortLogic: '食客定制',
+              logic: '用户在编辑器里打字、粘贴、修改 Markdown 内容的动作。' },
+            { id: '用户点击预览', name: '用户点击预览', category: 7, x: 1100, y: 660, symbolSize: 25,
+              shortLogic: '食客指菜',
+              logic: '用户在右侧预览区点击某个 Markdown 元素，触发定位到左侧编辑器。' },
+            { id: '运行完成', name: '运行完成', category: 7, x: 980, y: 600, symbolSize: 40, symbol: 'roundRect', itemStyle: { borderWidth: 3, borderColor: '#fbbf24', shadowBlur: 15, shadowColor: '#fbbf24' },
+              shortLogic: '用户看到/操作结果',
+              logic: '用户最终看到渲染好的微信排版页面，并可以与之交互（输入、点击、导出）。这是运行流程的终点。' },
+            { id: '导出/复制', name: '导出/复制', category: 7, x: 320, y: 750, symbolSize: 40, symbol: 'roundRect', itemStyle: { borderWidth: 3, borderColor: '#fbbf24', shadowBlur: 15, shadowColor: '#fbbf24' },
+              shortLogic: '打包外带',
+              logic: '用户点击导出 PDF/HTML 或复制到公众号，触发 wechatCompat 处理并生成最终结果。' }
+        ];
+
+        // ================= 连线数据 =================
+        const links = [
+            // 构建流程（蓝色）
+            { source: 'pnpm build', target: 'package.json', label: '读取 build 脚本', lineStyle: { color: '#60a5fa', width: 1.2 } },
+            { source: 'pnpm dev', target: 'package.json', label: '读取 dev 脚本', lineStyle: { color: '#60a5fa', width: 1.2 } },
+            { source: 'package.json', target: 'tsconfig.json', label: 'tsc 读取规则', lineStyle: { color: '#60a5fa', width: 1.2 } },
+            { source: 'package.json', target: 'vite.config.ts', label: 'vite 读取配置', lineStyle: { color: '#60a5fa', width: 1.2 } },
+            { source: 'package.json', target: 'tailwind.config.js', label: '样式系统配置', lineStyle: { color: '#60a5fa', width: 1.2 } },
+            { source: 'package.json', target: 'playwright.config.ts', label: '测试配置', lineStyle: { color: '#60a5fa', width: 1.2 } },
+            { source: 'package.json', target: 'vitest.config.ts', label: '测试配置', lineStyle: { color: '#60a5fa', width: 1.2 } },
+            { source: 'pnpm build', target: 'dist/', label: '最终产物', lineStyle: { color: '#60a5fa', width: 1.2, type: 'dashed' } },
+
+            // Vite 构建路径
+            { source: 'vite.config.ts', target: 'index.html', label: '从入口打包', lineStyle: { color: '#60a5fa', width: 1.2 } },
+            { source: 'index.html', target: 'src/main.tsx', label: '加载脚本', lineStyle: { color: '#60a5fa', width: 1.2 } },
+            { source: 'src/main.tsx', target: 'src/App.tsx', label: '渲染应用', lineStyle: { color: '#60a5fa', width: 1.2 } },
+            { source: 'public/', target: 'dist/', label: '复制静态资源', lineStyle: { color: '#60a5fa', width: 1.2, type: 'dashed' } },
+
+            // 运行流程（绿色）
+            { source: '浏览器', target: 'index.html', label: '请求页面', lineStyle: { color: '#34d399', width: 1.2 } },
+            { source: '浏览器', target: 'src/main.tsx', label: '加载 JS', lineStyle: { color: '#34d399', width: 1.2, type: 'dashed' } },
+            { source: 'src/main.tsx', target: 'src/App.tsx', label: '挂载应用', lineStyle: { color: '#34d399', width: 1.2 } },
+            { source: 'src/App.tsx', target: 'src/defaultContent.ts', label: '初始化内容', lineStyle: { color: '#34d399', width: 1.2 } },
+            { source: 'src/App.tsx', target: '用户输入', label: '等待输入', lineStyle: { color: '#34d399', width: 1.2, type: 'dashed' } },
+            { source: '用户输入', target: 'EditorPanel', label: '在编辑器输入', lineStyle: { color: '#34d399', width: 1.2 } },
+            { source: 'EditorPanel', target: 'src/App.tsx', label: '更新 markdownInput', lineStyle: { color: '#34d399', width: 1.2 } },
+            { source: 'src/App.tsx', target: 'src/lib/markdown.ts', label: '触发渲染', lineStyle: { color: '#34d399', width: 1.2 } },
+            { source: 'src/lib/markdown.ts', target: 'src/lib/themes/index.ts', label: '应用主题', lineStyle: { color: '#34d399', width: 1.2 } },
+            { source: 'src/lib/markdown.ts', target: 'src/lib/markdownIndexer.ts', label: '添加索引', lineStyle: { color: '#34d399', width: 1.2 } },
+            { source: 'src/lib/markdownIndexer.ts', target: 'src/lib/indexerRules.ts', label: '读取规则', lineStyle: { color: '#34d399', width: 1.2 } },
+            { source: 'src/App.tsx', target: 'PreviewPanel', label: '传递 HTML', lineStyle: { color: '#34d399', width: 1.2 } },
+            { source: 'PreviewPanel', target: '用户点击预览', label: '点击元素', lineStyle: { color: '#34d399', width: 1.2 } },
+            { source: '用户点击预览', target: 'src/App.tsx', label: 'onImageClick', lineStyle: { color: '#34d399', width: 1.2 } },
+            { source: 'src/App.tsx', target: 'src/lib/markdownLocator.ts', label: '普通元素定位', lineStyle: { color: '#34d399', width: 1.2 } },
+            { source: 'src/App.tsx', target: 'src/lib/imageSelector.ts', label: '图片定位', lineStyle: { color: '#34d399', width: 1.2 } },
+            { source: 'src/App.tsx', target: 'EditorPanel', label: '高亮对应位置', lineStyle: { color: '#34d399', width: 1.2 } },
+            { source: 'EditorPanel', target: 'src/lib/htmlToMarkdown.ts', label: '粘贴时转换', lineStyle: { color: '#34d399', width: 1.2 } },
+            { source: 'Toolbar', target: '导出/复制', label: '点击导出', lineStyle: { color: '#34d399', width: 1.2 } },
+            { source: '导出/复制', target: 'src/lib/wechatCompat.ts', label: '微信兼容处理', lineStyle: { color: '#34d399', width: 1.2 } },
+            { source: 'PreviewPanel', target: '运行完成', label: '呈现最终结果', lineStyle: { color: '#34d399', width: 2 } },
+            { source: '用户点击预览', target: '运行完成', label: '完成交互', lineStyle: { color: '#34d399', width: 2 } },
+            { source: '导出/复制', target: '运行完成', label: '输出完成', lineStyle: { color: '#34d399', width: 2 } },
+
+            // 依赖引入（灰色）
+            { source: 'src/App.tsx', target: 'Header', label: '引入组件', lineStyle: { color: '#94a3b8', width: 1.2, type: 'dashed' } },
+            { source: 'src/App.tsx', target: 'ThemeSelector', label: '引入组件', lineStyle: { color: '#94a3b8', width: 1.2, type: 'dashed' } },
+            { source: 'src/App.tsx', target: 'Toolbar', label: '引入组件', lineStyle: { color: '#94a3b8', width: 1.2, type: 'dashed' } },
+            { source: 'src/App.tsx', target: 'EditorPanel', label: '引入组件', lineStyle: { color: '#94a3b8', width: 1.2, type: 'dashed' } },
+            { source: 'src/App.tsx', target: 'PreviewPanel', label: '引入组件', lineStyle: { color: '#94a3b8', width: 1.2, type: 'dashed' } },
+            { source: 'src/App.tsx', target: 'DeviceFrame', label: '引入组件', lineStyle: { color: '#94a3b8', width: 1.2, type: 'dashed' } },
+            { source: 'src/App.tsx', target: 'src/lib/markdown.ts', label: '引入工具', lineStyle: { color: '#94a3b8', width: 1.2, type: 'dashed' } },
+            { source: 'src/App.tsx', target: 'src/lib/markdownIndexer.ts', label: '引入工具', lineStyle: { color: '#94a3b8', width: 1.2, type: 'dashed' } },
+            { source: 'src/App.tsx', target: 'src/lib/markdownLocator.ts', label: '引入工具', lineStyle: { color: '#94a3b8', width: 1.2, type: 'dashed' } },
+            { source: 'src/App.tsx', target: 'src/lib/imageSelector.ts', label: '引入工具', lineStyle: { color: '#94a3b8', width: 1.2, type: 'dashed' } },
+            { source: 'src/main.tsx', target: 'src/index.css', label: '引入样式', lineStyle: { color: '#94a3b8', width: 1.2, type: 'dashed' } },
+            { source: 'Toolbar', target: 'src/App.tsx', label: '接收回调', lineStyle: { color: '#94a3b8', width: 1.2, type: 'dashed' } },
+            { source: 'ThemeSelector', target: 'src/App.tsx', label: '接收回调', lineStyle: { color: '#94a3b8', width: 1.2, type: 'dashed' } },
+            { source: 'DeviceFrame', target: 'src/App.tsx', label: '读取状态', lineStyle: { color: '#94a3b8', width: 1.2, type: 'dashed' } },
+            { source: 'e2e/app.spec.ts', target: '浏览器', label: '模拟操作', lineStyle: { color: '#94a3b8', width: 1.2, type: 'dashed' } },
+            { source: '.github/workflows/', target: 'dist/', label: '自动部署', lineStyle: { color: '#94a3b8', width: 1.2, type: 'dashed' } }
+        ];
+
+        // ================= 路径定义 =================
+        // 构建主路径：从人类输入构建命令，到最终输出 dist/
+        const buildPath = [
+            'pnpm build',
+            'package.json',
+            'tsconfig.json', 'vite.config.ts', 'tailwind.config.js',
+            'index.html',
+            'src/main.tsx',
+            'src/App.tsx',
+            'Header', 'ThemeSelector', 'Toolbar', 'EditorPanel', 'PreviewPanel', 'DeviceFrame',
+            'src/lib/markdown.ts', 'src/lib/markdownIndexer.ts', 'src/lib/indexerRules.ts',
+            'src/lib/markdownLocator.ts', 'src/lib/imageSelector.ts', 'src/lib/htmlToMarkdown.ts',
+            'src/lib/wechatCompat.ts', 'src/lib/themes/index.ts',
+            'src/index.css', 'src/defaultContent.ts',
+            'dist/'
+        ];
+
+        // 运行主路径：从浏览器打开页面，到用户看到并交互
+        const runPath = [
+            '浏览器',
+            'index.html',
+            'src/main.tsx',
+            'src/App.tsx',
+            'src/defaultContent.ts',
+            '用户输入',
+            'EditorPanel',
+            'src/App.tsx',
+            'src/lib/markdown.ts',
+            'src/lib/themes/index.ts',
+            'src/lib/markdownIndexer.ts',
+            'src/lib/indexerRules.ts',
+            'PreviewPanel',
+            '运行完成',
+            '用户点击预览',
+            'src/App.tsx',
+            'src/lib/markdownLocator.ts', 'src/lib/imageSelector.ts',
+            'EditorPanel',
+            'Toolbar',
+            '导出/复制',
+            'src/lib/wechatCompat.ts',
+            '运行完成'
+        ];
+
+        // 节点 ID -> 所属路径集合
+        const nodeToPaths = {};
+        nodes.forEach(n => { nodeToPaths[n.id] = new Set(); });
+        buildPath.forEach(id => { if (nodeToPaths[id]) nodeToPaths[id].add('build'); });
+        runPath.forEach(id => { if (nodeToPaths[id]) nodeToPaths[id].add('run'); });
+
+        // 链接索引：source->target -> links 数组下标
+        const linkIndex = {};
+        links.forEach((link, idx) => {
+            linkIndex[link.source + '->' + link.target] = idx;
+        });
+
+        // ================= 计算每个节点的连接关系 =================
+        const incoming = {};
+        const outgoing = {};
+        nodes.forEach(n => { incoming[n.id] = []; outgoing[n.id] = []; });
+        links.forEach(link => {
+            if (!outgoing[link.source]) outgoing[link.source] = [];
+            if (!incoming[link.target]) incoming[link.target] = [];
+            outgoing[link.source].push(link);
+            incoming[link.target].push(link);
+        });
+
+        // ================= 高亮与动画状态 =================
+        const nodeIdToIndex = {};
+        nodes.forEach((n, idx) => { nodeIdToIndex[n.id] = idx; });
+
+        let currentHighlight = null; // 'build' | 'run' | null
+
+        const animationState = {
+            isPlaying: false,
+            pathName: null,
+            stepIndex: 0,
+            timerId: null,
+            stepDuration: 900
+        };
+
+        function updatePathCards(activePaths) {
+            const buildCard = document.getElementById('path-card-build');
+            const runCard = document.getElementById('path-card-run');
+            if (!buildCard || !runCard) return;
+
+            buildCard.classList.remove('active');
+            runCard.classList.remove('active');
+
+            if (activePaths) {
+                if (activePaths.includes('build')) buildCard.classList.add('active');
+                if (activePaths.includes('run')) runCard.classList.add('active');
+            }
+        }
+
+        function highlightPath(pathName) {
+            const pathArray = pathName === 'build' ? buildPath : runPath;
+            const pathSet = new Set(pathArray);
+            const pathColor = pathName === 'build' ? '#60a5fa' : '#34d399';
+
+            const newNodes = nodes.map(n => {
+                const isOnPath = pathSet.has(n.id);
+                return {
+                    ...n,
+                    itemStyle: {
+                        ...n.itemStyle,
+                        opacity: isOnPath ? 1 : 0.12,
+                        shadowBlur: isOnPath ? 18 : (n.itemStyle?.shadowBlur || 0),
+                        shadowColor: isOnPath ? pathColor : 'transparent'
+                    },
+                    label: {
+                        ...(n.label || {}),
+                        opacity: isOnPath ? 1 : 0.25
+                    }
+                };
+            });
+
+            const newLinks = links.map(l => {
+                const isOnPath = pathSet.has(l.source) && pathSet.has(l.target);
+                return {
+                    ...l,
+                    lineStyle: {
+                        ...l.lineStyle,
+                        opacity: isOnPath ? 1 : 0.08,
+                        width: isOnPath ? 2.5 : 1
+                    }
+                };
+            });
+
+            myChart.setOption({
+                series: [{
+                    data: newNodes,
+                    links: newLinks
+                }]
+            });
+
+            currentHighlight = pathName;
+            updatePathCards([pathName]);
+        }
+
+        function clearHighlight() {
+            myChart.setOption({
+                series: [{
+                    data: nodes.map(n => ({
+                        ...n,
+                        itemStyle: {
+                            ...n.itemStyle,
+                            opacity: 1,
+                            shadowBlur: n.itemStyle?.shadowBlur || 0,
+                            shadowColor: n.itemStyle?.shadowColor || 'transparent'
+                        },
+                        label: {
+                            ...(n.label || {}),
+                            opacity: 1
+                        }
+                    })),
+                    links: links.map(l => ({
+                        ...l,
+                        lineStyle: {
+                            ...l.lineStyle,
+                            opacity: 0.8,
+                            width: 1.2
+                        }
+                    }))
+                }]
+            });
+            currentHighlight = null;
+            updatePathCards(null);
+        }
+
+        function getPathEdges(pathArray) {
+            const edges = [];
+            for (let i = 0; i < pathArray.length - 1; i++) {
+                const key = pathArray[i] + '->' + pathArray[i + 1];
+                if (linkIndex.hasOwnProperty(key)) {
+                    edges.push(linkIndex[key]);
+                }
+            }
+            return edges;
+        }
+
+        function renderAnimationStep(pathName, stepIndex) {
+            const pathArray = pathName === 'build' ? buildPath : runPath;
+            const pathColor = pathName === 'build' ? '#60a5fa' : '#34d399';
+            const pathEdges = getPathEdges(pathArray);
+
+            const newNodes = nodes.map(n => {
+                const nodeStep = pathArray.indexOf(n.id);
+                let opacity = 0.12;
+                let scale = 1;
+                let shadowBlur = 0;
+                let shadowColor = 'transparent';
+
+                if (nodeStep !== -1 && nodeStep <= stepIndex) {
+                    opacity = 1;
+                    if (nodeStep === stepIndex) {
+                        scale = 1.35;
+                        shadowBlur = 28;
+                        shadowColor = pathColor;
+                    } else {
+                        opacity = 0.55;
+                    }
+                }
+
+                return {
+                    ...n,
+                    symbolSize: n.symbolSize * scale,
+                    itemStyle: {
+                        ...n.itemStyle,
+                        opacity,
+                        shadowBlur,
+                        shadowColor
+                    },
+                    label: {
+                        ...(n.label || {}),
+                        opacity: nodeStep !== -1 && nodeStep <= stepIndex ? 1 : 0.25
+                    }
+                };
+            });
+
+            const newLinks = links.map((l, idx) => {
+                const edgeStep = pathEdges.indexOf(idx);
+                let opacity = 0.08;
+                let width = 1;
+
+                if (edgeStep !== -1 && edgeStep <= stepIndex - 1) {
+                    opacity = 1;
+                    width = 3;
+                }
+
+                return {
+                    ...l,
+                    lineStyle: {
+                        ...l.lineStyle,
+                        opacity,
+                        width
+                    }
+                };
+            });
+
+            myChart.setOption({
+                series: [{
+                    data: newNodes,
+                    links: newLinks
+                }]
+            });
+        }
+
+        function updatePlaybackButtons() {
+            const playBtn = document.getElementById('btn-play');
+            const pauseBtn = document.getElementById('btn-pause');
+            if (!playBtn || !pauseBtn) return;
+            playBtn.disabled = animationState.isPlaying;
+            pauseBtn.disabled = !animationState.isPlaying;
+            playBtn.style.opacity = animationState.isPlaying ? '0.5' : '1';
+            pauseBtn.style.opacity = animationState.isPlaying ? '1' : '0.5';
+        }
+
+        function startAnimation() {
+            if (animationState.isPlaying) return;
+
+            const selectedPath = document.getElementById('path-select').value;
+
+            if (animationState.pathName !== selectedPath) {
+                animationState.pathName = selectedPath;
+                animationState.stepIndex = 0;
+            }
+
+            animationState.isPlaying = true;
+            updatePlaybackButtons();
+            updatePathCards([animationState.pathName]);
+
+            function tick() {
+                if (!animationState.isPlaying) return;
+
+                const pathArray = animationState.pathName === 'build' ? buildPath : runPath;
+
+                if (animationState.stepIndex >= pathArray.length) {
+                    animationState.isPlaying = false;
+                    animationState.stepIndex = 0;
+                    updatePlaybackButtons();
+                    return;
+                }
+
+                renderAnimationStep(animationState.pathName, animationState.stepIndex);
+                animationState.stepIndex++;
+                animationState.timerId = setTimeout(tick, animationState.stepDuration);
+            }
+
+            tick();
+        }
+
+        function pauseAnimation() {
+            animationState.isPlaying = false;
+            if (animationState.timerId) {
+                clearTimeout(animationState.timerId);
+                animationState.timerId = null;
+            }
+            updatePlaybackButtons();
+        }
+
+        function resetAnimation() {
+            pauseAnimation();
+            animationState.stepIndex = 0;
+            animationState.pathName = null;
+            clearHighlight();
+            updatePlaybackButtons();
+        }
+
+        // ================= 初始化 ECharts =================
+        const chartDom = document.getElementById('chart');
+        const myChart = echarts.init(chartDom, 'dark');
+
+        const option = {
+            backgroundColor: 'transparent',
+            tooltip: {
+                trigger: 'item',
+                backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                borderColor: '#475569',
+                textStyle: { color: '#e2e8f0' },
+                formatter: function(params) {
+                    if (params.dataType === 'node') {
+                        const d = params.data;
+                        return `<b style="font-size:1.1rem">${d.name}</b><br/>
+                                <span style="color:${categories[d.category].itemStyle.color}">${categories[d.category].name}</span><br/><br/>
+                                ${d.logic}`;
+                    } else {
+                        return `<b>${params.data.source} → ${params.data.target}</b><br/>${params.data.label || ''}`;
+                    }
+                }
+            },
+            legend: {
+                data: categories.map(c => c.name),
+                top: 10,
+                left: 'center',
+                textStyle: { color: '#cbd5e1' }
+            },
+            xAxis: { show: false, min: 0, max: 1600, type: 'value' },
+            yAxis: { show: false, min: 0, max: 1000, type: 'value' },
+            series: [{
+                type: 'graph',
+                layout: 'none',
+                roam: true,
+                draggable: true,
+                symbol: 'circle',
+                data: nodes.map(n => ({
+                    ...n,
+                    value: n.symbolSize,
+                    label: {
+                        show: true,
+                        position: 'bottom',
+                        distance: 8,
+                        fontSize: 9,
+                        color: categories[n.category].label.color,
+                        formatter: function(p) {
+                            return p.data.shortLogic
+                                ? `{name|${p.name}}\n{logic|${p.data.shortLogic}}`
+                                : `{name|${p.name}}`;
+                        },
+                        rich: {
+                            name: { fontSize: 10, fontWeight: 'bold', color: 'inherit' },
+                            logic: { fontSize: 8, color: '#94a3b8', padding: [2,0,0,0] }
+                        }
+                    }
+                })),
+                links: links,
+                categories: categories,
+                lineStyle: {
+                    curveness: 0.15,
+                    opacity: 0.8
+                },
+                edgeLabel: {
+                    show: true,
+                    fontSize: 8,
+                    color: '#cbd5e1',
+                    formatter: function(p) { return p.data.label; }
+                },
+                edgeSymbol: ['none', 'arrow'],
+                edgeSymbolSize: [0, 8],
+                emphasis: {
+                    focus: 'adjacency',
+                    lineStyle: { width: 4 }
+                }
+            }]
+        };
+
+        myChart.setOption(option);
+
+        // ================= 路径卡片点击：高亮对应节点 =================
+        document.getElementById('path-card-build').addEventListener('click', () => {
+            if (currentHighlight === 'build') {
+                clearHighlight();
+            } else {
+                pauseAnimation();
+                highlightPath('build');
+            }
+        });
+
+        document.getElementById('path-card-run').addEventListener('click', () => {
+            if (currentHighlight === 'run') {
+                clearHighlight();
+            } else {
+                pauseAnimation();
+                highlightPath('run');
+            }
+        });
+
+        // ================= 播放控制 =================
+        document.getElementById('btn-play').addEventListener('click', startAnimation);
+        document.getElementById('btn-pause').addEventListener('click', pauseAnimation);
+        document.getElementById('btn-reset').addEventListener('click', resetAnimation);
+        document.getElementById('path-select').addEventListener('change', () => {
+            resetAnimation();
+        });
+        updatePlaybackButtons();
+
+        // ================= 点击节点显示详情 =================
+        myChart.on('click', function(params) {
+            if (params.dataType !== 'node') return;
+            const d = params.data;
+
+            // 高亮对应路径卡片
+            const belongsTo = Array.from(nodeToPaths[d.id] || []);
+            updatePathCards(belongsTo.length > 0 ? belongsTo : null);
+
+            const panel = document.getElementById('detailPanel');
+
+            const inLinks = incoming[d.id] || [];
+            const outLinks = outgoing[d.id] || [];
+
+            const renderLink = (link, direction) => {
+                const isBuild = link.lineStyle.color === '#60a5fa';
+                const isRun = link.lineStyle.color === '#34d399';
+                const colorClass = isBuild ? 'conn-build' : isRun ? 'conn-run' : 'conn-dep';
+                const arrow = direction === 'in' ? '←' : '→';
+                const otherNode = direction === 'in' ? link.source : link.target;
+                return `<div class="conn-row">
+                    <span class="${colorClass}">${isBuild ? '构建' : isRun ? '运行' : '依赖'}</span>
+                    <span class="conn-arrow">${otherNode} ${arrow}</span>
+                    <span>${link.label}</span>
+                </div>`;
+            };
+
+            panel.innerHTML = `
+                <div class="node-detail">
+                    <span class="badge" style="background:${categories[d.category].itemStyle.color}22; color:${categories[d.category].itemStyle.color}">
+                        ${categories[d.category].name}
+                    </span>
+                    <h2>${d.name}</h2>
+
+                    <div class="detail-section">
+                        <h3>核心逻辑</h3>
+                        <p>${d.logic}</p>
+                    </div>
+
+                    ${inLinks.length ? `
+                    <div class="detail-section">
+                        <h3>谁触发/依赖它（流入）</h3>
+                        <div class="connections">${inLinks.map(l => renderLink(l, 'in')).join('')}</div>
+                    </div>` : ''}
+
+                    ${outLinks.length ? `
+                    <div class="detail-section">
+                        <h3>它触发/依赖谁（流出）</h3>
+                        <div class="connections">${outLinks.map(l => renderLink(l, 'out')).join('')}</div>
+                    </div>` : ''}
+                </div>
+            `;
+        });
+
+        // 点击画布空白处清除路径卡片高亮
+        myChart.getZr().on('click', function(params) {
+            if (!params.target) {
+                updatePathCards(null);
+            }
+        });
+
+        // 窗口大小变化时自适应
+        window.addEventListener('resize', () => myChart.resize());
+    </script>
+</body>
+</html>

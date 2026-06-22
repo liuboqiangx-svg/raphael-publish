@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raphael Publish 项目构建与运行全景图</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f7fa;
+            color: #1f2937;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 32px;
+            border-radius: 16px;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 12px;
+        }
+
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.95;
+            max-width: 800px;
+        }
+
+        .metaphor-box {
+            background: #fffbeb;
+            border-left: 5px solid #f59e0b;
+            padding: 20px 24px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+
+        .metaphor-box h2 {
+            color: #92400e;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 2px;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            border: none;
+            background: transparent;
+            color: #6b7280;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 8px 8px 0 0;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .tab-btn.active {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
+        }
+
+        .tab-content {
+            display: none;
+            background: white;
+            border-radius: 12px;
+            padding: 28px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            min-height: 600px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* 项目地图样式 */
+        .map-layout {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 24px;
+            height: 700px;
+        }
+
+        .file-tree {
+            background: #f9fafb;
+            border-radius: 10px;
+            padding: 16px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+        }
+
+        .tree-node {
+            margin: 2px 0;
+        }
+
+        .tree-label {
+            padding: 8px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.15s;
+            font-size: 0.95rem;
+        }
+
+        .tree-label:hover {
+            background: #e5e7eb;
+        }
+
+        .tree-label.active {
+            background: #ede9fe;
+            color: #5b21b6;
+            font-weight: 600;
+        }
+
+        .tree-label.folder {
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .tree-children {
+            padding-left: 20px;
+            border-left: 1px dashed #d1d5db;
+            margin-left: 10px;
+        }
+
+        .tree-children.collapsed {
+            display: none;
+        }
+
+        .toggle-icon {
+            width: 16px;
+            text-align: center;
+            color: #9ca3af;
+            font-size: 0.8rem;
+        }
+
+        .detail-card {
+            background: #f9fafb;
+            border-radius: 10px;
+            padding: 24px;
+            border: 1px solid #e5e7eb;
+            overflow-y: auto;
+            height: 100%;
+        }
+
+        .detail-card h3 {
+            color: #1f2937;
+            font-size: 1.5rem;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .detail-row {
+            margin-bottom: 18px;
+        }
+
+        .detail-row h4 {
+            color: #6b7280;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+
+        .detail-row p, .detail-row ul {
+            color: #374151;
+            font-size: 1rem;
+        }
+
+        .detail-row ul {
+            padding-left: 20px;
+        }
+
+        .detail-row li {
+            margin-bottom: 4px;
+        }
+
+        .metaphor-tag {
+            display: inline-block;
+            background: #fef3c7;
+            color: #92400e;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        /* 流程图样式 */
+        .flow-intro {
+            background: #eff6ff;
+            border-left: 5px solid #3b82f6;
+            padding: 16px 20px;
+            border-radius: 8px;
+            margin-bottom: 28px;
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 40px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 14px;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: #c7d2fe;
+            border-radius: 3px;
+        }
+
+        .flow-step {
+            position: relative;
+            margin-bottom: 20px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+
+        .flow-step:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .flow-step-header {
+            padding: 16px 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: #fafafa;
+        }
+
+        .step-number {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #667eea;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .step-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #1f2937;
+        }
+
+        .step-subtitle {
+            color: #6b7280;
+            font-size: 0.9rem;
+            margin-left: auto;
+        }
+
+        .flow-step-body {
+            padding: 0 20px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+        }
+
+        .flow-step.expanded .flow-step-body {
+            padding: 20px;
+            max-height: 500px;
+        }
+
+        .flow-step-body p {
+            margin-bottom: 12px;
+        }
+
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 14px 18px;
+            border-radius: 8px;
+            font-family: "Menlo", "Monaco", "Courier New", monospace;
+            font-size: 0.9rem;
+            margin: 12px 0;
+            overflow-x: auto;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-right: 6px;
+        }
+
+        .tag-config { background: #dbeafe; color: #1e40af; }
+        .tag-entry { background: #dcfce7; color: #166534; }
+        .tag-core { background: #fce7f3; color: #9d174d; }
+        .tag-component { background: #e0e7ff; color: #3730a3; }
+        .tag-tool { background: #fef3c7; color: #92400e; }
+        .tag-asset { background: #f3e8ff; color: #6b21a8; }
+        .tag-test { background: #ccfbf1; color: #115e59; }
+        .tag-git { background: #fee2e2; color: #991b1b; }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .placeholder {
+            color: #9ca3af;
+            font-style: italic;
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        @media (max-width: 900px) {
+            .map-layout {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+            .file-tree {
+                max-height: 400px;
+            }
+            .detail-card {
+                min-height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Raphael Publish 项目构建与运行全景图</h1>
+            <p>这是一个面向编程小白的可视化学习页面。我们用"做一道菜"的比喻，把项目里每个文件的作用、构建顺序、运行触发逻辑讲清楚。</p>
+        </header>
+
+        <div class="metaphor-box">
+            <h2>核心比喻：把项目比作做一道菜</h2>
+            <p>整个前端项目就像厨房里做一道菜。<strong>源代码</strong>是食材和配方，<strong>构建工具 Vite</strong>是厨师，<strong>浏览器</strong>是食客，<strong>package.json</strong>是菜谱和配料表。点击下面的标签页，从"项目地图"、"构建流程"、"运行流程"三个角度学习这道菜是怎么从食材变成佳肴的。</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="map">项目地图</button>
+            <button class="tab-btn" data-tab="build">构建流程</button>
+            <button class="tab-btn" data-tab="run">运行流程</button>
+        </div>
+
+        <!-- 项目地图 -->
+        <div class="tab-content active" id="tab-map">
+            <div class="legend">
+                <span class="tag tag-config">配置层</span>
+                <span class="tag tag-entry">入口层</span>
+                <span class="tag tag-core">核心层</span>
+                <span class="tag tag-component">组件层</span>
+                <span class="tag tag-tool">工具层</span>
+                <span class="tag tag-asset">资源层</span>
+                <span class="tag tag-test">测试层</span>
+                <span class="tag tag-git">版本控制</span>
+            </div>
+            <div class="map-layout">
+                <div class="file-tree" id="fileTree"></div>
+                <div class="detail-card" id="detailCard">
+                    <div class="placeholder">点击左侧文件或目录，查看它的作用、比喻、触发时机和依赖关系</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 构建流程 -->
+        <div class="tab-content" id="tab-build">
+            <div class="flow-intro">
+                <strong>构建 = 把源代码加工成可以部署的产物。</strong> 执行 <code>pnpm build</code> 时，项目会按下面的顺序被"烹饪"成 dist/ 目录。
+            </div>
+            <div class="timeline" id="buildTimeline"></div>
+        </div>
+
+        <!-- 运行流程 -->
+        <div class="tab-content" id="tab-run">
+            <div class="flow-intro">
+                <strong>运行 = 用户在浏览器打开网页后发生的一切。</strong> 从输入网址到看到界面、再到点击交互，每个文件按下面的顺序被触发。
+            </div>
+            <div class="timeline" id="runTimeline"></div>
+        </div>
+    </div>
+
+    <script>
+        // ================= 文件树数据 =================
+        const fileData = {
+            id: 'root',
+            name: 'raphael-publish/',
+            type: 'folder',
+            tagClass: '',
+            metaphor: '整间厨房',
+            role: '项目的根目录，所有文件都住在这里。',
+            trigger: '你打开这个项目文件夹的那一刻。',
+            deps: [],
+            detail: '这是 Raphael Publish 项目的根目录。里面有菜谱（package.json）、食材仓库（node_modules）、配方手册（src）、成品照片（media）、版本记录相册（.git）等。',
+            children: [
+                {
+                    id: 'config',
+                    name: '配置层',
+                    type: 'folder',
+                    tagClass: 'tag-config',
+                    metaphor: '厨房电器说明书',
+                    role: '告诉各种工具这个项目应该怎么处理。',
+                    trigger: '每次构建、运行、测试时首先被读取。',
+                    deps: [],
+                    detail: '配置层里的文件不直接产生界面功能，但决定了项目能用什么语法、怎么打包、怎么检查错误。',
+                    children: [
+                        {
+                            id: 'package.json',
+                            name: 'package.json',
+                            type: 'file',
+                            tagClass: 'tag-config',
+                            metaphor: '菜谱 + 配料表',
+                            role: '项目的"身份证"：写明项目名字、版本、依赖包、可执行脚本。',
+                            trigger: '任何命令（pnpm install / pnpm dev / pnpm build）启动时第一个被读取。',
+                            deps: [],
+                            detail: '<code>scripts</code> 字段定义了常用命令：dev 是本地开发，build 是构建，test 是运行单元测试，test:e2e 是运行端到端测试。<code>dependencies</code> 是运行时必需的库（如 React、markdown-it），<code>devDependencies</code> 是开发时用的工具（如 Vite、TypeScript）。'
+                        },
+                        {
+                            id: 'vite.config.ts',
+                            name: 'vite.config.ts',
+                            type: 'file',
+                            tagClass: 'tag-config',
+                            metaphor: '主厨 Vite 的工作台设置',
+                            role: '配置 Vite 构建工具：使用 React 插件、设置基础路径。',
+                            trigger: '运行 pnpm dev 或 pnpm build 时被 Vite 读取。',
+                            deps: ['package.json'],
+                            detail: '这个文件告诉 Vite："这是一个 React 项目，打包时把基础路径设为 /"。目前配置很简洁，只有 React 插件和 base 路径。'
+                        },
+                        {
+                            id: 'tsconfig.json',
+                            name: 'tsconfig.json',
+                            type: 'file',
+                            tagClass: 'tag-config',
+                            metaphor: 'TypeScript 语法规则手册',
+                            role: '规定 TypeScript 代码应该怎么写、支持哪些浏览器特性。',
+                            trigger: '运行 tsc -b（类型检查）或被编辑器读取时。',
+                            deps: ['package.json'],
+                            detail: '例如：target: ES2020 表示编译后的代码支持现代浏览器；strict: true 表示开启严格类型检查；include: ["src"] 表示只检查 src 目录下的文件。'
+                        },
+                        {
+                            id: 'tailwind.config.js',
+                            name: 'tailwind.config.js',
+                            type: 'file',
+                            tagClass: 'tag-config',
+                            metaphor: '调色盘和尺寸表',
+                            role: '配置 Tailwind CSS 的主题色、间距、字体等设计系统。',
+                            trigger: '构建 CSS 时被 Tailwind 读取。',
+                            deps: ['package.json'],
+                            detail: 'Tailwind 是一个"原子类"CSS 框架。这个配置文件定义了项目允许使用哪些颜色、圆角、阴影，确保全站风格统一。'
+                        },
+                        {
+                            id: 'playwright.config.ts',
+                            name: 'playwright.config.ts',
+                            type: 'file',
+                            tagClass: 'tag-test',
+                            metaphor: '试吃员排班表',
+                            role: '配置端到端（E2E）测试工具 Playwright。',
+                            trigger: '运行 pnpm test:e2e 时读取。',
+                            deps: ['package.json'],
+                            detail: 'Playwright 会模拟真实浏览器，自动点击页面、输入文字、检查界面是否符合预期。这个配置文件决定测试哪个地址、用什么浏览器。'
+                        },
+                        {
+                            id: 'vitest.config.ts',
+                            name: 'vitest.config.ts',
+                            type: 'file',
+                            tagClass: 'tag-test',
+                            metaphor: '食材质检仪设置',
+                            role: '配置单元测试工具 Vitest。',
+                            trigger: '运行 pnpm test 时读取。',
+                            deps: ['package.json'],
+                            detail: 'Vitest 负责对单个函数、单个模块做快速测试。这个配置文件决定测试环境（如 jsdom 模拟浏览器）、如何导入模块等。'
+                        }
+                    ]
+                },
+                {
+                    id: 'entry',
+                    name: '入口层',
+                    type: 'folder',
+                    tagClass: 'tag-entry',
+                    metaphor: '上菜的盘子和开火按钮',
+                    role: '浏览器最早接触到的文件，负责把应用启动起来。',
+                    trigger: '用户打开网页时最先被请求。',
+                    deps: ['配置层'],
+                    detail: '入口层是"从浏览器到 React 应用"的桥梁。',
+                    children: [
+                        {
+                            id: 'index.html',
+                            name: 'index.html',
+                            type: 'file',
+                            tagClass: 'tag-entry',
+                            metaphor: '空盘子',
+                            role: '浏览器看到的第一个页面，只提供一个挂载点和标题。',
+                            trigger: '用户输入网址或刷新页面时，服务器首先返回这个文件。',
+                            deps: ['vite.config.ts'],
+                            detail: '<code>&lt;div id="root"&gt;&lt;/div&gt;</code> 是一个空容器。后面的 React 代码会把自己"注入"到这个容器里。页面上还引用了 favicon.svg 和统计脚本。'
+                        },
+                        {
+                            id: 'src/main.tsx',
+                            name: 'src/main.tsx',
+                            type: 'file',
+                            tagClass: 'tag-entry',
+                            metaphor: '开火按钮',
+                            role: '把 React 应用挂载到 index.html 的 root 容器里。',
+                            trigger: '浏览器加载并执行 index.html 中引用的 /src/main.tsx 脚本后。',
+                            deps: ['index.html', 'src/App.tsx', 'src/index.css'],
+                            detail: '<code>createRoot(document.getElementById("root")!).render(&lt;App /&gt;)</code> 这句话的意思是：找到 id 为 root 的元素，把 App 组件渲染进去。'
+                        }
+                    ]
+                },
+                {
+                    id: 'core',
+                    name: '核心层',
+                    type: 'folder',
+                    tagClass: 'tag-core',
+                    metaphor: '主厨',
+                    role: '控制整个应用的状态、布局和核心逻辑。',
+                    trigger: 'main.tsx 挂载后立即渲染 App。',
+                    deps: ['src/main.tsx', 'src/components/*', 'src/lib/*'],
+                    detail: 'App.tsx 是整个应用的大脑。它决定页面长什么样、用户操作时数据怎么变化。',
+                    children: [
+                        {
+                            id: 'src/App.tsx',
+                            name: 'src/App.tsx',
+                            type: 'file',
+                            tagClass: 'tag-core',
+                            metaphor: '餐厅主厨 / 总指挥',
+                            role: '管理所有状态（主题、Markdown 内容、设备类型等），组织子组件渲染，处理滚动同步和点击定位。',
+                            trigger: 'main.tsx 挂载后立刻触发；用户每次交互后也会重新触发相关部分。',
+                            deps: ['src/main.tsx', 'src/components/Header.tsx', 'src/components/ThemeSelector.tsx', 'src/components/Toolbar.tsx', 'src/components/EditorPanel.tsx', 'src/components/PreviewPanel.tsx', 'src/lib/*', 'src/defaultContent.ts'],
+                            detail: 'App.tsx 里有很多 <code>useState</code>（状态）和 <code>useEffect</code>（副作用）。例如：当 markdownInput 变化时，useEffect 会调用 markdown-it 把 Markdown 转成 HTML，再应用主题样式。'
+                        },
+                        {
+                            id: 'src/defaultContent.ts',
+                            name: 'src/defaultContent.ts',
+                            type: 'file',
+                            tagClass: 'tag-core',
+                            metaphor: '菜单上的示例菜',
+                            role: '提供编辑器默认显示的示例 Markdown 内容。',
+                            trigger: 'App.tsx 初始化状态时读取。',
+                            deps: ['src/App.tsx'],
+                            detail: '用户第一次打开页面时，编辑器里不是空的，而是展示了一段示例文章，这就是 defaultContent 的作用。'
+                        },
+                        {
+                            id: 'src/index.css',
+                            name: 'src/index.css',
+                            type: 'file',
+                            tagClass: 'tag-core',
+                            metaphor: '餐厅整体装修风格',
+                            role: '全局 CSS 样式，包括暗色模式、滚动条、设备框架动画等。',
+                            trigger: 'main.tsx 中通过 import 引入，随应用一起加载。',
+                            deps: ['src/main.tsx', 'tailwind.config.js'],
+                            detail: '这个文件里有一些全局规则和 CSS 变量，比如 .dark 类下的颜色、设备切换时的过渡动画。'
+                        }
+                    ]
+                },
+                {
+                    id: 'components',
+                    name: '组件层（components/）',
+                    type: 'folder',
+                    tagClass: 'tag-component',
+                    metaphor: '各种厨具和小工',
+                    role: '把界面拆成独立的"零件"，每个零件负责一块功能。',
+                    trigger: 'App.tsx 渲染时被引用和渲染。',
+                    deps: ['src/App.tsx'],
+                    detail: 'React 的核心思想是"组件化"。把界面拆成小块，每个小块只负责自己的显示和交互，方便维护和复用。',
+                    children: [
+                        {
+                            id: 'src/components/Header.tsx',
+                            name: 'Header.tsx',
+                            type: 'file',
+                            tagClass: 'tag-component',
+                            metaphor: '餐厅招牌和灯光开关',
+                            role: '顶部标题栏，包含项目名称、GitHub 链接、暗色/亮色模式切换。',
+                            trigger: 'App.tsx 渲染时。',
+                            deps: ['src/App.tsx'],
+                            detail: 'Header 接收 toggleTheme 函数作为 props，用户点击月亮/太阳图标时切换全站暗色模式。'
+                        },
+                        {
+                            id: 'src/components/ThemeSelector.tsx',
+                            name: 'ThemeSelector.tsx',
+                            type: 'file',
+                            tagClass: 'tag-component',
+                            metaphor: '主题菜单抽屉',
+                            role: '左上方主题选择下拉面板，点击展开/折叠。',
+                            trigger: 'App.tsx 渲染时显示；用户点击"主题"按钮时展开，选择主题或点遮罩后折叠。',
+                            deps: ['src/App.tsx', 'framer-motion'],
+                            detail: '内部用 useState 管理 isThemeOpen 状态，用 framer-motion 做展开/折叠动画。选择主题后调用 App 传下来的 onThemeChange。'
+                        },
+                        {
+                            id: 'src/components/Toolbar.tsx',
+                            name: 'Toolbar.tsx',
+                            type: 'file',
+                            tagClass: 'tag-component',
+                            metaphor: '操作台按钮组',
+                            role: '顶部工具栏：设备切换、滚动同步开关、导出 PDF/HTML、复制到公众号。',
+                            trigger: 'App.tsx 渲染时显示；用户点击各按钮时触发对应回调。',
+                            deps: ['src/App.tsx'],
+                            detail: 'Toolbar 本身不处理复杂逻辑，只是把用户点击事件传递回 App.tsx 或调用传入的函数。'
+                        },
+                        {
+                            id: 'src/components/EditorPanel.tsx',
+                            name: 'EditorPanel.tsx',
+                            type: 'file',
+                            tagClass: 'tag-component',
+                            metaphor: '切菜板',
+                            role: '左侧 Markdown 编辑器（一个 textarea），用户在这里写内容。',
+                            trigger: 'App.tsx 渲染时；用户在 textarea 中输入时触发 onChange。',
+                            deps: ['src/App.tsx', 'src/lib/htmlToMarkdown.ts'],
+                            detail: '它接收 markdownInput 和 setMarkdownInput，用户打字时更新 App 的状态。同时处理粘贴事件，实现"魔法粘贴"功能。'
+                        },
+                        {
+                            id: 'src/components/PreviewPanel.tsx',
+                            name: 'PreviewPanel.tsx',
+                            type: 'file',
+                            tagClass: 'tag-component',
+                            metaphor: '成品展示盘',
+                            role: '右侧预览区，显示渲染后的微信排版效果。',
+                            trigger: 'App.tsx 渲染时；markdownInput 或 activeTheme 变化时重新渲染。',
+                            deps: ['src/App.tsx', 'src/lib/markdownIndexer.ts'],
+                            detail: '预览区里的每个 Markdown 元素都被打上了 data-md-type 和 data-md-index 标签。用户点击某个元素时，会触发 onImageClick 回调，定位到编辑器对应位置。'
+                        },
+                        {
+                            id: 'src/components/DeviceFrame.tsx',
+                            name: 'DeviceFrame.tsx',
+                            type: 'file',
+                            tagClass: 'tag-component',
+                            metaphor: '手机/平板/电脑的展示模型',
+                            role: '根据 previewDevice 状态，给预览区套上不同设备的边框。',
+                            trigger: 'previewDevice 状态变化时重新渲染。',
+                            deps: ['src/App.tsx'],
+                            detail: '让预览看起来像在手机、平板或桌面浏览器里显示，帮助作者提前看到不同设备下的效果。'
+                        }
+                    ]
+                },
+                {
+                    id: 'lib',
+                    name: '工具层（lib/）',
+                    type: 'folder',
+                    tagClass: 'tag-tool',
+                    metaphor: '调料、配方和专用工具',
+                    role: '处理 Markdown 解析、主题渲染、元素定位、粘贴转换等核心算法。',
+                    trigger: 'App.tsx 或组件需要相关功能时调用。',
+                    deps: ['src/App.tsx', 'src/components/*'],
+                    detail: 'lib 里的文件都是"纯函数"或工具函数，不直接显示界面，但负责把数据加工成界面能用的内容。',
+                    children: [
+                        {
+                            id: 'src/lib/markdown.ts',
+                            name: 'markdown.ts',
+                            type: 'file',
+                            tagClass: 'tag-tool',
+                            metaphor: '切菜机',
+                            role: '使用 markdown-it 把 Markdown 文本解析成 HTML。',
+                            trigger: 'App.tsx 中 markdownInput 变化时调用。',
+                            deps: ['markdown-it', 'highlight.js'],
+                            detail: '里面配置了 markdown-it 插件、代码高亮、预处理规则（preprocessMarkdown）和主题应用函数（applyTheme）。'
+                        },
+                        {
+                            id: 'src/lib/markdownIndexer.ts',
+                            name: 'markdownIndexer.ts',
+                            type: 'file',
+                            tagClass: 'tag-tool',
+                            metaphor: '给每块食材贴编号标签',
+                            role: '给渲染后的 HTML 元素添加 data-md-type 和 data-md-index 属性。',
+                            trigger: '每次 Markdown 渲染完成后调用。',
+                            deps: ['src/lib/markdown.ts', 'src/lib/indexerRules.ts'],
+                            detail: '这样预览区的每个标题、段落、图片都有了唯一编号，用户点击时才能找到编辑器里的对应位置。'
+                        },
+                        {
+                            id: 'src/lib/markdownLocator.ts',
+                            name: 'markdownLocator.ts',
+                            type: 'file',
+                            tagClass: 'tag-tool',
+                            metaphor: '反向定位仪',
+                            role: '根据元素类型和编号，在原始 Markdown 文本里找到对应的起始/结束位置。',
+                            trigger: '用户点击预览区元素时调用。',
+                            deps: ['src/lib/indexerRules.ts'],
+                            detail: '比如用户点击了第 3 个标题，这个函数会去 Markdown 里找到第 3 个标题所在的位置，方便编辑器高亮选中。'
+                        },
+                        {
+                            id: 'src/lib/imageSelector.ts',
+                            name: 'imageSelector.ts',
+                            type: 'file',
+                            tagClass: 'tag-tool',
+                            metaphor: '图片专用定位器',
+                            role: '专门处理点击图片时的定位和高亮逻辑。',
+                            trigger: '用户点击预览区图片时调用。',
+                            deps: ['src/lib/markdown.ts'],
+                            detail: '图片比较特殊，需要根据 src 或 alt 去 Markdown 里匹配，还要处理选中文本范围和滚动到对应位置。'
+                        },
+                        {
+                            id: 'src/lib/htmlToMarkdown.ts',
+                            name: 'htmlToMarkdown.ts',
+                            type: 'file',
+                            tagClass: 'tag-tool',
+                            metaphor: '万能转换器',
+                            role: '把从网页、Word、Notion、飞书复制的富文本 HTML 转成 Markdown。',
+                            trigger: '用户在编辑器里粘贴（Ctrl/Cmd + V）时调用。',
+                            deps: ['turndown', 'turndown-plugin-gfm'],
+                            detail: '这就是"魔法粘贴"的核心。用户粘贴一段带格式的文字，它能自动净化成干净的 Markdown。'
+                        },
+                        {
+                            id: 'src/lib/wechatCompat.ts',
+                            name: 'wechatCompat.ts',
+                            type: 'file',
+                            tagClass: 'tag-tool',
+                            metaphor: '微信口味调节师',
+                            role: '让生成的 HTML 在微信公众号后台能正确显示，处理图片、表格、外链等兼容问题。',
+                            trigger: '导出 HTML 或复制到公众号时调用。',
+                            deps: ['src/lib/markdown.ts'],
+                            detail: '微信公众号对 HTML 和 CSS 有一些限制，这个文件负责把内部标记去掉、外链图片转 Base64 等。'
+                        },
+                        {
+                            id: 'src/lib/indexerRules.ts',
+                            name: 'indexerRules.ts',
+                            type: 'file',
+                            tagClass: 'tag-tool',
+                            metaphor: '编号规则手册',
+                            role: '定义哪些 HTML 元素需要编号、编号顺序规则。',
+                            trigger: 'markdownIndexer.ts 打标时读取。',
+                            deps: ['src/lib/markdownIndexer.ts'],
+                            detail: '例如：标题 h1-h6、段落 p、列表 li、代码块 pre 等都需要编号。保证打标和反查使用同一套规则。'
+                        },
+                        {
+                            id: 'src/lib/themes/index.ts',
+                            name: 'themes/index.ts',
+                            type: 'file',
+                            tagClass: 'tag-tool',
+                            metaphor: '30 套菜系菜单',
+                            role: '导出所有可选主题，并提供主题选择所需的元数据。',
+                            trigger: 'App.tsx 初始化、用户切换主题时读取。',
+                            deps: ['src/App.tsx', 'src/lib/themes/*.ts'],
+                            detail: '主题本身定义在 src/lib/themes/classic.ts 等文件里，index.ts 负责把它们汇总成一个数组。'
+                        }
+                    ]
+                },
+                {
+                    id: 'assets',
+                    name: '资源与测试',
+                    type: 'folder',
+                    tagClass: 'tag-asset',
+                    metaphor: '装饰配料、菜单照片和质检员',
+                    role: '存放静态资源、演示媒体和自动化测试。',
+                    trigger: '构建时复制资源；测试时运行脚本。',
+                    deps: ['package.json'],
+                    detail: '这些文件不直接参与界面逻辑，但对产品展示和质量保障很重要。',
+                    children: [
+                        {
+                            id: 'public/',
+                            name: 'public/',
+                            type: 'file',
+                            tagClass: 'tag-asset',
+                            metaphor: '不需要加工的装饰配料',
+                            role: '存放构建时直接复制到 dist/ 的静态文件。',
+                            trigger: '构建过程中被 Vite 原样复制。',
+                            deps: ['vite.config.ts'],
+                            detail: '比如 public/CNAME 是部署到 GitHub Pages 时需要的自定义域名文件。'
+                        },
+                        {
+                            id: 'media/',
+                            name: 'media/',
+                            type: 'file',
+                            tagClass: 'tag-asset',
+                            metaphor: '菜单照片和宣传片',
+                            role: '存放项目截图、GIF 演示、MP4 视频，主要用于 README 展示。',
+                            trigger: 'README.md 引用这些图片和视频。',
+                            deps: ['README.md'],
+                            detail: 'media/screenshot.png、record.gif、demo.mp4 都是给 GitHub 仓库首页展示用的。'
+                        },
+                        {
+                            id: 'e2e/app.spec.ts',
+                            name: 'e2e/app.spec.ts',
+                            type: 'file',
+                            tagClass: 'tag-test',
+                            metaphor: '试吃员写的试吃报告模板',
+                            role: '用 Playwright 模拟真实用户操作，确保核心功能正常。',
+                            trigger: '运行 pnpm test:e2e 时执行。',
+                            deps: ['playwright.config.ts'],
+                            detail: '比如它会打开浏览器，检查页面标题是否正确、编辑器是否能输入、预览是否同步渲染等。'
+                        }
+                    ]
+                },
+                {
+                    id: 'git',
+                    name: '版本控制',
+                    type: 'folder',
+                    tagClass: 'tag-git',
+                    metaphor: '记忆相册和协作规则',
+                    role: '记录代码每次修改，支持多人协作和回滚。',
+                    trigger: '每次 git commit / git push / git pull 时。',
+                    deps: [],
+                    detail: '这些目录不是项目运行必需的，但对团队协作和代码历史非常重要。',
+                    children: [
+                        {
+                            id: '.git/',
+                            name: '.git/',
+                            type: 'file',
+                            tagClass: 'tag-git',
+                            metaphor: '记忆相册',
+                            role: 'Git 版本控制的数据库，保存每一次修改的快照。',
+                            trigger: '所有 git 命令（status、log、commit、push 等）时读取。',
+                            deps: [],
+                            detail: '里面的内容对人类不友好，但 Git 能靠它知道：谁在什么时候改了什么、如何回到之前的版本。'
+                        },
+                        {
+                            id: '.github/workflows/',
+                            name: '.github/workflows/',
+                            type: 'file',
+                            tagClass: 'tag-git',
+                            metaphor: '自动上菜机器人',
+                            role: 'GitHub Actions 自动化脚本：提交代码后自动测试、构建、部署。',
+                            trigger: '代码推送到 GitHub 时自动触发。',
+                            deps: ['.git/'],
+                            detail: 'ci.yml 负责跑测试，deploy.yml 负责构建并部署到 GitHub Pages。'
+                        },
+                        {
+                            id: '.cursor/',
+                            name: '.cursor/',
+                            type: 'file',
+                            tagClass: 'tag-git',
+                            metaphor: 'Cursor 编辑器的个人便签',
+                            role: 'Cursor 编辑器的项目级配置或记忆。',
+                            trigger: '用 Cursor 打开项目时读取。',
+                            deps: [],
+                            detail: '这是编辑器相关的目录，不影响项目构建和运行。'
+                        }
+                    ]
+                }
+            ]
+        };
+
+        // ================= 构建流程数据 =================
+        const buildSteps = [
+            {
+                title: '你在终端输入 pnpm build',
+                subtitle: '人类发出指令',
+                content: '这是构建的起点。pnpm 会先读取 package.json，找到 scripts.build 对应的命令：<code>tsc -b &amp;&amp; vite build</code>。'
+            },
+            {
+                title: '读取 package.json',
+                subtitle: '查看菜谱',
+                content: 'package.json 告诉系统：项目叫什么名字、依赖哪些库、build 脚本具体做什么。就像做菜前先看菜谱和配料表。'
+            },
+            {
+                title: '读取 vite.config.ts',
+                subtitle: '配置主厨工作台',
+                content: 'Vite 启动前会先读取自己的配置文件，加载 React 插件，确认基础路径是 <code>/</code>。这样 Vite 才知道怎么正确处理 JSX 和 TypeScript。'
+            },
+            {
+                title: 'tsc -b 类型检查',
+                subtitle: '检查食材有没有坏',
+                content: 'TypeScript 编译器读取 tsconfig.json，检查 src/ 下所有 .ts/.tsx 文件的类型是否正确。如果有类型错误，构建会在这里停下来并报错。'
+            },
+            {
+                title: 'vite build 开始打包',
+                subtitle: '厨师开始烹饪',
+                content: 'Vite 从 index.html 出发，找到 <code>&lt;script src="/src/main.tsx"&gt;</code>，然后沿着 import 关系递归解析整个依赖树。'
+            },
+            {
+                title: '解析依赖树',
+                subtitle: 'main.tsx → App.tsx → components → lib',
+                content: 'Vite 会分析：main.tsx 引入了 App.tsx，App.tsx 引入了 Header/Toolbar/EditorPanel/PreviewPanel 等组件，组件又引入了 lib 里的工具函数。最终形成一张完整的"调用关系图"。'
+            },
+            {
+                title: '编译和转换',
+                subtitle: '把高级食材加工成可食用状态',
+                content: 'TypeScript 被转成 JavaScript，JSX 被转成 React 调用，Tailwind CSS 被处理成最终 CSS。所有 import 被打包成少数几个优化后的文件。'
+            },
+            {
+                title: '复制 public/ 到 dist/',
+                subtitle: '摆上装饰配料',
+                content: 'public/ 目录下的文件（如 CNAME）不需要编译，会被 Vite 直接复制到输出目录 dist/ 中。'
+            },
+            {
+                title: '输出 dist/ 目录',
+                subtitle: '菜品完成，可以上桌',
+                content: '构建完成！dist/ 里包含 index.html、打包后的 JS/CSS、以及 public/ 复制来的文件。这个目录可以直接部署到 GitHub Pages 或任何静态服务器。'
+            }
+        ];
+
+        // ================= 运行流程数据 =================
+        const runSteps = [
+            {
+                title: '浏览器请求 index.html',
+                subtitle: '食客拿到空盘子',
+                content: '用户在地址栏输入网址，服务器返回 index.html。这个文件很"轻"，主要内容只有一个 <code>&lt;div id="root"&gt;&lt;/div&gt;</code> 容器。'
+            },
+            {
+                title: '浏览器加载 src/main.tsx',
+                subtitle: '厨师接到点火指令',
+                content: '浏览器看到 <code>&lt;script src="/src/main.tsx"&gt;</code>，向服务器请求对应的 JS 文件（实际是经过 Vite 打包后的版本）。'
+            },
+            {
+                title: 'main.tsx 执行',
+                subtitle: '开火',
+                content: '<code>createRoot(document.getElementById("root")!).render(&lt;App /&gt;)</code> 执行：找到 root 容器，准备把 React 应用渲染进去。'
+            },
+            {
+                title: '渲染 App.tsx',
+                subtitle: '主厨登场',
+                content: 'App.tsx 被渲染。它初始化所有状态：当前主题、Markdown 内容、预览设备、是否开启滚动同步等。'
+            },
+            {
+                title: '触发 useEffect：把 Markdown 转成 HTML',
+                subtitle: '切菜机开始工作',
+                content: 'App.tsx 里的 useEffect 检测到 markdownInput 和 activeTheme，于是调用 lib/markdown.ts 里的函数：先 render Markdown 得到 rawHtml，再 applyTheme 加上主题样式，最后用 markdownIndexer 给元素打编号。'
+            },
+            {
+                title: '渲染各子组件',
+                subtitle: '小工们各就各位',
+                content: 'Header、ThemeSelector、Toolbar、EditorPanel、PreviewPanel、DeviceFrame 等组件依次渲染，组合成完整界面。'
+            },
+            {
+                title: '用户在编辑器里输入',
+                subtitle: '食客开始定制口味',
+                content: 'EditorPanel 里的 textarea 检测到 onChange 事件，调用 setMarkdownInput 更新 App.tsx 里的状态。'
+            },
+            {
+                title: 'React 重新渲染预览',
+                subtitle: '根据新配方重新做菜',
+                content: 'markdownInput 变化触发 App.tsx 的 useEffect，再次调用 markdown 相关函数生成新的 HTML，PreviewPanel 显示更新后的排版效果。'
+            },
+            {
+                title: '用户点击预览区元素',
+                subtitle: '食客指着盘子里某处问做法',
+                content: 'PreviewPanel 通过事件委托捕获点击，读取 data-md-type 和 data-md-index，调用 App.tsx 的 handleImageClick。'
+            },
+            {
+                title: '定位到编辑器对应位置',
+                subtitle: '厨师立刻找到原材料',
+                content: 'App.tsx 调用 markdownLocator.ts 或 imageSelector.ts，根据编号在原始 Markdown 中找到对应位置，用 selectTextAreaRange 高亮编辑器中的文本。'
+            }
+        ];
+
+        // ================= 渲染函数 =================
+        function renderTree(node, container) {
+            const div = document.createElement('div');
+            div.className = 'tree-node';
+
+            const label = document.createElement('div');
+            label.className = 'tree-label' + (node.type === 'folder' ? ' folder' : '');
+            label.dataset.id = node.id;
+            label.innerHTML = `
+                <span class="toggle-icon">${node.children ? '▼' : '•'}</span>
+                <span>${node.name}</span>
+                ${node.tagClass ? `<span class="tag ${node.tagClass}">${getTagText(node.tagClass)}</span>` : ''}
+            `;
+            label.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectNode(node, label);
+                if (node.children) {
+                    childrenDiv.classList.toggle('collapsed');
+                    label.querySelector('.toggle-icon').textContent = childrenDiv.classList.contains('collapsed') ? '▶' : '▼';
+                }
+            });
+            div.appendChild(label);
+
+            let childrenDiv;
+            if (node.children) {
+                childrenDiv = document.createElement('div');
+                childrenDiv.className = 'tree-children';
+                node.children.forEach(child => renderTree(child, childrenDiv));
+                div.appendChild(childrenDiv);
+            }
+
+            container.appendChild(div);
+        }
+
+        function getTagText(tagClass) {
+            const map = {
+                'tag-config': '配置',
+                'tag-entry': '入口',
+                'tag-core': '核心',
+                'tag-component': '组件',
+                'tag-tool': '工具',
+                'tag-asset': '资源',
+                'tag-test': '测试',
+                'tag-git': 'Git'
+            };
+            return map[tagClass] || '';
+        }
+
+        function selectNode(node, labelEl) {
+            document.querySelectorAll('.tree-label').forEach(el => el.classList.remove('active'));
+            if (labelEl) labelEl.classList.add('active');
+
+            const card = document.getElementById('detailCard');
+            card.innerHTML = `
+                <h3>${node.name}</h3>
+                <div class="detail-row">
+                    <h4>一句话比喻</h4>
+                    <span class="metaphor-tag">${node.metaphor || '—'}</span>
+                </div>
+                <div class="detail-row">
+                    <h4>它是做什么的</h4>
+                    <p>${node.role || '—'}</p>
+                </div>
+                <div class="detail-row">
+                    <h4>什么时候被触发</h4>
+                    <p>${node.trigger || '—'}</p>
+                </div>
+                <div class="detail-row">
+                    <h4>它依赖谁</h4>
+                    ${node.deps && node.deps.length ? '<ul>' + node.deps.map(d => `<li>${d}</li>`).join('') + '</ul>' : '<p>无直接依赖</p>'}
+                </div>
+                <div class="detail-row">
+                    <h4>详细说明</h4>
+                    <p>${node.detail || '—'}</p>
+                </div>
+            `;
+        }
+
+        function renderTimeline(steps, containerId) {
+            const container = document.getElementById(containerId);
+            steps.forEach((step, index) => {
+                const stepDiv = document.createElement('div');
+                stepDiv.className = 'flow-step' + (index === 0 ? ' expanded' : '');
+                stepDiv.innerHTML = `
+                    <div class="flow-step-header">
+                        <div class="step-number">${index + 1}</div>
+                        <div class="step-title">${step.title}</div>
+                        <div class="step-subtitle">${step.subtitle}</div>
+                    </div>
+                    <div class="flow-step-body">
+                        <p>${step.content}</p>
+                    </div>
+                `;
+                stepDiv.querySelector('.flow-step-header').addEventListener('click', () => {
+                    stepDiv.classList.toggle('expanded');
+                });
+                container.appendChild(stepDiv);
+            });
+        }
+
+        // ================= 初始化 =================
+        document.addEventListener('DOMContentLoaded', () => {
+            // 渲染文件树
+            renderTree(fileData, document.getElementById('fileTree'));
+
+            // 默认选中根目录
+            const rootLabel = document.querySelector('.tree-label');
+            if (rootLabel) selectNode(fileData, rootLabel);
+
+            // 渲染流程图
+            renderTimeline(buildSteps, 'buildTimeline');
+            renderTimeline(runSteps, 'runTimeline');
+
+            // 标签切换
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    btn.classList.add('active');
+                    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
